@@ -73,13 +73,16 @@ class HtmlFormatter(TelegramFormatter):
         if record.name:
             record.name = escape_html(str(record.name))
         if record.msg:
-            """
-            try beautifully format message
-            """
-            try:
-                msg_str = json.dumps(record.msg, indent=4)
-            except Exception as e:
-                msg_str = pprint.pformat(record.msg, indent=4)
+            if isinstance(record.msg, (dict, list, tuple)):
+                """
+                try beautifully format message
+                """
+                try:
+                    msg_str = json.dumps(record.msg, indent=4, ensure_ascii=False)
+                except Exception as e:
+                    msg_str = pprint.pformat(record.msg, indent=4)
+            else:
+                msg_str = str(record.msg)
             if record.args:
                 msg_str = msg_str % record.args
             record.message = escape_html(msg_str)
