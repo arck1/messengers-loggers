@@ -23,6 +23,7 @@ class TelegramHandler(logging.Handler):
         token: str,
         chat_id: str,
         *,
+        is_enabled: bool = False,
         service: str = None,
         level=logging.NOTSET,
         timeout: int = 2,
@@ -38,6 +39,8 @@ class TelegramHandler(logging.Handler):
         self.disable_notification = disable_notification
         self.timeout = timeout
         self.proxies = proxies
+
+        self.is_enabled = is_enabled
 
         if not self.chat_id:
             level = logging.NOTSET
@@ -107,6 +110,10 @@ class TelegramHandler(logging.Handler):
     def emit(self, record: logging.LogRecord):
         text = self.format(record)
 
+        if not self.is_enabled:
+            logger.info("TelegramHandler disabled:\n{}".format(text))
+            return
+
         if not self.chat_id:
             logger.warning("TelegramHandler without chat_id:\n{}".format(text))
             return
@@ -130,19 +137,14 @@ class TelegramHandler(logging.Handler):
 
 
 class TelegramDjangoHandler(TelegramHandler):
-    def __init__(
-            self,
-            token: str = None,
-            chat_id: str = None,
-            *args,
-            **kwargs
-    ):
+    def __init__(self, token: str = None, chat_id: str = None, is_enabled: bool = False, *args, **kwargs):
         from django.conf import settings
+
         token = token or getattr(settings, "TELEGRAM_LOGGER_TOKEN", None)
         chat_id = chat_id or getattr(settings, "TELEGRAM_LOGGER_CHAT_ID", None)
-
+        is_enabled = is_enabled or getattr(settings, "MESSENGERS_LOGGER_ENABLE", False)
         config: Dict = getattr(settings, "MESSENGERS_LOGGER_CONFIG", {})
 
         kwargs.update(config)
 
-        super().__init__(token, chat_id, *args, **kwargs)
+        super().__init__(token, chat_id, is_enabled=is_enabled, *args, **kwargs)
