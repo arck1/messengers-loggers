@@ -15,6 +15,8 @@ class TelegramFormatter(logging.Formatter):
     parse_mode = None
 
     def __init__(self, fmt=None, *args, **kwargs):
+        fmt = kwargs.get("format")
+
         super(TelegramFormatter, self).__init__(fmt or self.fmt, *args, **kwargs)
 
 
@@ -33,15 +35,18 @@ class EMOJI:
     WHITE_CIRCLE = "⚪"
     BLUE_CIRCLE = "🔵"
     RED_CIRCLE = "🔴"
+    ORANGE_CIRCLE = "🟠"
+    BLACK_CIRCLE = "⚫"
 
 
 LOG_LEVEL_EMOJI = {
     logging.DEBUG: EMOJI.WHITE_CIRCLE,
     logging.INFO: EMOJI.BLUE_CIRCLE,
     logging.ERROR: EMOJI.RED_CIRCLE,
+    logging.WARNING: EMOJI.ORANGE_CIRCLE,
+    logging.FATAL: EMOJI.BLACK_CIRCLE,
 }
 DEFAULT_LOG_LEVEL_EMOJI = EMOJI.RED_CIRCLE
-
 
 HTML_PRE_TAG = "<pre>%s</pre>"
 
@@ -49,16 +54,13 @@ HTML_PRE_TAG = "<pre>%s</pre>"
 class HtmlFormatter(TelegramFormatter):
     """HTML formatter for telegram."""
 
-    fmt = "<b>%(levelname)s</b>\nFrom [%(name)s:%(funcName)s]\n%(message)s"
-    fmt_service = "<b>%(levelname)s</b>\nFrom #{service}\n[%(name)s:%(funcName)s]\n%(message)s"
+    fmt = "<b>%(levelname)s</b>\nFrom [%(module)s:%(funcName)s]\n%(message)s"
+    fmt_service = "<b>%(levelname)s</b>\nFrom %(service)\n[%(module)s:%(funcName)s]\n%(message)s"
     parse_mode = "HTML"
 
     def __init__(self, *args, **kwargs):
         self.use_emoji = kwargs.pop("use_emoji", False)
         self.service = kwargs.pop("service", None)
-
-        if self.service:
-            self.fmt = self.fmt_service.format(service=self.service)
 
         super(HtmlFormatter, self).__init__(*args, **kwargs)
 
@@ -66,7 +68,8 @@ class HtmlFormatter(TelegramFormatter):
         """
         :param logging.LogRecord record:
         """
-        super(HtmlFormatter, self).format(record)
+
+        record.service = self.service or "logs"
 
         if record.funcName:
             record.funcName = escape_html(str(record.funcName))
@@ -90,10 +93,7 @@ class HtmlFormatter(TelegramFormatter):
             record.levelname = "{emoji} {loglevel}".format(
                 emoji=LOG_LEVEL_EMOJI.get(record.levelno, DEFAULT_LOG_LEVEL_EMOJI), loglevel=record.levelname
             )
-        if hasattr(self, "_style"):
-            return self._style.format(record)
-        else:
-            return self._fmt % record.__dict__
+        return super(HtmlFormatter, self).format(record)
 
     def formatException(self, *args, **kwargs) -> str:
         string: str = super(HtmlFormatter, self).formatException(*args, **kwargs)

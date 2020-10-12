@@ -49,7 +49,7 @@ class TelegramHandler(logging.Handler):
 
         super(TelegramHandler, self).__init__(level=level)
 
-        self.setFormatter(formatter or HtmlFormatter(use_emoji=True, service=service))
+        self._defaultFormatter = formatter or HtmlFormatter(use_emoji=True, service=service)
 
     @classmethod
     def format_url(cls, token, method):
@@ -106,6 +106,13 @@ class TelegramHandler(logging.Handler):
             **kwargs,
         }
         return self.request("sendDocument", data=data, files={"document": ("traceback.txt", document, "text/plain")})
+
+    def format(self, record):
+        if self.formatter:
+            fmt = self.formatter
+        else:
+            fmt = self._defaultFormatter
+        return fmt.format(record)
 
     def emit(self, record: logging.LogRecord):
         text = self.format(record)
