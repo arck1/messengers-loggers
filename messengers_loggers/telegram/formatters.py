@@ -54,8 +54,8 @@ HTML_PRE_TAG = "<pre>%s</pre>"
 class HtmlFormatter(TelegramFormatter):
     """HTML formatter for telegram."""
 
-    fmt = "<b>%(levelname)s</b>\nFrom [%(module)s:%(funcName)s]\n%(message)s"
-    fmt_service = "<b>%(levelname)s</b>\nFrom %(service)\n[%(module)s:%(funcName)s]\n%(message)s"
+    # _fmt = "<b>%(levelname)s</b>\nFrom [%(module)s:%(funcName)s]\n%(message)s"
+    fmt = "<b>%(levelname)s</b>\nFrom %(service)s\n[%(module)s:%(funcName)s]\n%(message)s"
     parse_mode = "HTML"
 
     def __init__(self, *args, **kwargs):
@@ -69,7 +69,7 @@ class HtmlFormatter(TelegramFormatter):
         :param logging.LogRecord record:
         """
 
-        record.service = self.service or "logs"
+        record.service = escape_html(str(self.service) or "logs")
 
         if record.module:
             record.module = escape_html(str(record.module))

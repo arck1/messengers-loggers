@@ -134,6 +134,10 @@ class TelegramHandler(logging.Handler):
         if getattr(self.formatter, "parse_mode", None):
             data["parse_mode"] = self.formatter.parse_mode
 
+        if not text:
+            logger.warning("Empty log {}".format(record))
+            return
+
         if len(text) < MAX_MESSAGE_LEN:
             response = self.send_message(text, **data)
         else:
