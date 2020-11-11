@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.NOTSET)
 logger.propagate = False
 
-__all__ = ["TelegramHandler"]
+__all__ = ["TelegramHandler", "TelegramDjangoHandler"]
 
 MAX_MESSAGE_LEN = 4096
 

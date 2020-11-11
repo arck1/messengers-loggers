@@ -71,6 +71,8 @@ class HtmlFormatter(TelegramFormatter):
 
         record.service = self.service or "logs"
 
+        if record.module:
+            record.module = escape_html(str(record.module))
         if record.funcName:
             record.funcName = escape_html(str(record.funcName))
         if record.name:
@@ -91,7 +93,8 @@ class HtmlFormatter(TelegramFormatter):
             record.message = escape_html(msg_str)
         if self.use_emoji:
             record.levelname = "{emoji} {loglevel}".format(
-                emoji=LOG_LEVEL_EMOJI.get(record.levelno, DEFAULT_LOG_LEVEL_EMOJI), loglevel=record.levelname
+                emoji=LOG_LEVEL_EMOJI.get(record.levelno, DEFAULT_LOG_LEVEL_EMOJI),
+                loglevel=escape_html(str(record.levelname)),
             )
         return super(HtmlFormatter, self).format(record)
 
