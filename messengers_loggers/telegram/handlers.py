@@ -3,6 +3,8 @@ from io import BytesIO
 from typing import Dict, Optional, Union
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3 import Retry
 
 from messengers_loggers.telegram.formatters import HtmlFormatter, TelegramFormatter
 
@@ -13,6 +15,18 @@ logger.propagate = False
 __all__ = ["TelegramHandler", "TelegramDjangoHandler"]
 
 MAX_MESSAGE_LEN = 4096
+
+retry_strategy = Retry(
+    total=7,
+    status_forcelist=(429, 500, 501, 502, 503, 504),
+    method_whitelist=[
+        "POST",
+        "GET",
+    ],
+    backoff_factor=1,
+)
+
+adapter = HTTPAdapter(max_retries=retry_strategy)
 
 
 class TelegramHandler(logging.Handler):
@@ -31,6 +45,8 @@ class TelegramHandler(logging.Handler):
         disable_web_page_preview: bool = False,
         proxies=None,
         formatter: TelegramFormatter = None,
+        max_attempts: int = 5,
+        retry_countdown: float = 2.0,
     ):
         self.token = token
         self.chat_id = chat_id
@@ -42,6 +58,9 @@ class TelegramHandler(logging.Handler):
 
         self.is_enabled = is_enabled
 
+        self.max_attempts = max_attempts
+        self.retry_countdown = retry_countdown
+
         if not self.chat_id:
             level = logging.NOTSET
             logger.error("Did not get chat id. Setting handler logging level to NOTSET.")
@@ -50,6 +69,14 @@ class TelegramHandler(logging.Handler):
         super(TelegramHandler, self).__init__(level=level)
 
         self._defaultFormatter = formatter or HtmlFormatter(use_emoji=True, service=service)
+
+    @staticmethod
+    def new_session() -> requests.Session:
+        session = requests.Session()
+        session.mount("https://", adapter)
+        session.mount("http://", adapter)
+
+        return session
 
     @classmethod
     def format_url(cls, token, method):
@@ -76,20 +103,22 @@ class TelegramHandler(logging.Handler):
             logger.debug(response)
 
     def request(self, method: str, **kwargs) -> Optional[Dict]:
-        url = self.format_url(self.token, method)
+        url: str = self.format_url(self.token, method)
 
         kwargs.setdefault("timeout", self.timeout)
         kwargs.setdefault("proxies", self.proxies)
         response = None
-        try:
-            response = requests.post(url, **kwargs)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            logger.exception("Error while making POST to %s", url)
-            logger.debug(str(kwargs))
-            if response is not None:
-                logger.debug(response.content)
+
+        with self.new_session() as session:
+            try:
+                response = session.post(url, **kwargs)
+                response.raise_for_status()
+                return response.json()
+            except Exception as e:
+                logger.exception("Error while making POST to %s", url)
+                logger.debug(str(kwargs))
+                if response is not None:
+                    logger.debug(response.content)
 
         return response
 

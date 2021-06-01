@@ -130,3 +130,4 @@ dmypy.json
 
 .pytest_cache
 .idea
+.DS_Store
